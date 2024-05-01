@@ -162,6 +162,7 @@ struct DynamicSearchView: View {
 			
 			isShowSuggestions.toggle()
 			didSave?()
+			text = ""
 		}
 	}
 	
