@@ -14,17 +14,25 @@ struct Session: Identifiable {
 	var isDone: Bool
 }
 
+enum FocusType: Equatable {
+	case category
+	case inputTitle
+	case suggestion
+	case session
+	
+}
+
 struct HomeView: View {
 	var categories: [Category] = [
 		.init(id: 1, title: "Work", color: .red),
-		.init(id: 2, title: "Wok", color: .gray),
+		.init(id: 2, title: "Freelance", color: .gray),
 		.init(id: 3, title: "Sleep", color: .black),
 		.init(id: 4, title: "Games", color: .blue),
 		.init(id: 5, title: "Music", color: .green),
 		.init(id: 6, title: "Hobby", color: .yellow),
 	]
 	
-	var suggestions: [Suggestion] = [
+	@State var suggestions: [Suggestion] = [
 		.init(id: 1, title: "Slicing UI"),
 		.init(id: 2, title: "Meeting with PM"),
 		.init(id: 3, title: "API Integration"),
@@ -40,25 +48,26 @@ struct HomeView: View {
 		.init(id: 5, title: "Drawing", categoryId: 6, isDone: false),
 	]
 	
-	@FocusState var sessionIsFocused: Bool
+	@FocusState var focusState: FocusType?
 	@State var searchText: String = ""
 	@State var titleText: String = ""
-	@State var selectedSession: Int = -1
+	@State var sessionIndex: Int = 0
 	@State var selectedCategory: Category = .init(id: -1, title: "Category", color: .green)
 	
 	var body: some View {
 		VStack {
-			CategorySelectorView(categories: categories, selectedCategory: selectedCategory) { id in
-				sessionIsFocused = true
+			CategorySelectorView(focusState: _focusState, 
+								 categories: categories,
+								 selectedCategory: selectedCategory) { id in
 				categoryDidSelect(id)
 			}
 			
-			DynamicSearchView(text: $titleText, suggestions: suggestions, categories: categories) { id in
-				sessionIsFocused = true
+			DynamicSearchView(text: $titleText, 
+							  suggestions: suggestions,
+							  categories: categories) { title in
+				saveSession(title: title)
 			} categoryDidSelect: { id in
 				categoryDidSelect(id)
-			} didSave: {
-				saveSession()
 			}
 			
 			sessionView
@@ -74,14 +83,24 @@ struct HomeView: View {
 	func categoryDidSelect(_ id: Int) {
 		if let category = categories.first(where: { $0.id == id }) {
 			selectedCategory = category
-			print(category)
 		}
 	}
 	
-	func saveSession() {
-		guard selectedCategory.id != -1 else { return }
-		let session = Session(id: Int.random(in: 10...100), title: titleText, categoryId: selectedCategory.id, isDone: false)
+	func saveSession(title: String) {
+		
+		guard !title.isEmpty, selectedCategory.id != -1 else {
+			focusState = .session
+			return
+		}
+		
+		let session = Session(id: Int.random(in: 10...100), title: title, categoryId: selectedCategory.id, isDone: false)
 		sessions.insert(session, at: 0)
+		sessionIndex = 0
+		focusState = .session
+		
+		if !suggestions.contains(where: { $0.title.lowercased().contains(title) }) {
+			suggestions.insert(.init(id: Int.random(in: 10...100), title: title), at: 0)
+		}
 	}
 }
 
@@ -90,7 +109,7 @@ extension HomeView {
 		ScrollView {
 			VStack(alignment: .leading, spacing: 4) {
 				ForEach(Array(sessions.enumerated()), id: \.offset) { (index, session) in
-					let isSelected = selectedSession == index
+					let isSelected = sessionIndex == index && focusState == .session
 					HStack(spacing: 10) {
 						Image(systemName: session.isDone ? "checkmark.square" : "square")
 							.renderingMode(.template)
@@ -108,7 +127,7 @@ extension HomeView {
 					}
 					.contentShape(Rectangle())
 					.onTapGesture {
-						selectedSession = index
+						sessionIndex = index
 					}
 					.padding(.horizontal, 8)
 					.padding(.vertical, 10.5)
@@ -119,25 +138,25 @@ extension HomeView {
 			}
 		}
 		.onAppear {
-			sessionIsFocused = true
+			focusState = .session
 		}
 		.focusable()
-		.focused($sessionIsFocused)
+		.focused($focusState, equals: .session)
 		.focusEffectDisabled()
 		.onKeyPress(.downArrow) {
-			if selectedSession < sessions.count - 1 {
-				selectedSession += 1
+			if sessionIndex < sessions.count - 1 {
+				sessionIndex += 1
 			}
 			return .handled
 		}
 		.onKeyPress(.upArrow) {
-			if selectedSession > 0 {
-				selectedSession -= 1
+			if sessionIndex > 0 {
+				sessionIndex -= 1
 			}
 			return .handled
 		}
 		.onKeyPress(.return) {
-			sessions[selectedSession].isDone.toggle()
+			sessions[sessionIndex].isDone.toggle()
 			return .handled
 		}
 	}

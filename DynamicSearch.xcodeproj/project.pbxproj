@@ -41,15 +41,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		F2299DEF2BDECFB500BC7179 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				F2F8BA5F2BDD65FF0066F9D8 /* CategorySelectorView.swift */,
-				F2299DE82BDE5F7D00BC7179 /* DynamicSearchView.swift */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
 		F2F8BA3C2BDD609F0066F9D8 = {
 			isa = PBXGroup;
 			children = (
@@ -108,7 +99,8 @@
 			isa = PBXGroup;
 			children = (
 				F2F8BA5C2BDD65D40066F9D8 /* HomeView.swift */,
-				F2299DEF2BDECFB500BC7179 /* Views */,
+				F2F8BA5F2BDD65FF0066F9D8 /* CategorySelectorView.swift */,
+				F2299DE82BDE5F7D00BC7179 /* DynamicSearchView.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -348,10 +340,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.mike.DynamicSearch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -386,10 +378,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.mike.DynamicSearch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
