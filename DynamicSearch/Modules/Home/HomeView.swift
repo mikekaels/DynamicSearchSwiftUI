@@ -17,9 +17,8 @@ struct Session: Identifiable {
 enum FocusType: Equatable {
 	case category
 	case inputTitle
-	case suggestion
+//	case suggestion
 	case session
-	
 }
 
 struct HomeView: View {
@@ -30,6 +29,8 @@ struct HomeView: View {
 		.init(id: 4, title: "Games", color: .blue),
 		.init(id: 5, title: "Music", color: .green),
 		.init(id: 6, title: "Hobby", color: .yellow),
+		.init(id: 7, title: "School", color: .brown),
+		.init(id: 8, title: "Others", color: .orange),
 	]
 	
 	@State var suggestions: [Suggestion] = [
@@ -38,6 +39,12 @@ struct HomeView: View {
 		.init(id: 3, title: "API Integration"),
 		.init(id: 4, title: "Meeting with Backend"),
 		.init(id: 5, title: "Drawing"),
+		.init(id: 6, title: "API Meeting"),
+		.init(id: 7, title: "API meet"),
+		.init(id: 8, title: "google meet"),
+		.init(id: 9, title: "Design UI"),
+		.init(id: 10, title: "Fixing UI"),
+		.init(id: 11, title: "Integration meeting"),
 	]
 	
 	@State var sessions: [Session] = [
@@ -93,13 +100,16 @@ struct HomeView: View {
 			return
 		}
 		
-		let session = Session(id: Int.random(in: 10...100), title: title, categoryId: selectedCategory.id, isDone: false)
+		let session = Session(id: Int.random(in: 100...100000), title: title, categoryId: selectedCategory.id, isDone: false)
 		sessions.insert(session, at: 0)
 		sessionIndex = 0
 		focusState = .session
-		
-		if !suggestions.contains(where: { $0.title.lowercased().contains(title) }) {
-			suggestions.insert(.init(id: Int.random(in: 10...100), title: title), at: 0)
+		if let suggestionIndex = suggestions.firstIndex(where: { $0.title.lowercased().contains(title.lowercased()) }) {
+			let suggestin = suggestions[suggestionIndex]
+			suggestions.remove(at: suggestionIndex)
+			suggestions.insert(suggestin, at: 0)
+		} else {
+			suggestions.insert(.init(id: Int.random(in: 100...100000), title: title), at: 0)
 		}
 	}
 }
