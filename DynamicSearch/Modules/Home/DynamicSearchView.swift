@@ -76,152 +76,30 @@ struct DynamicSearchView: View {
 					showDropDown = newValue == .inputTitle
 				}
 				.onChange(of: text, { oldValue, newValue in
-					let isContainAt = text.contains("@")
-					suggestionType = isContainAt ? (text.first == "@" ? .category : .categoryOnRecentInput) : .recentInput
-					
-					let input = newValue.filter { $0 != "@" }
-					
-					if isKeyboardTypes, suggestionType == .recentInput {
-						dropDownIndex = -1
-						titleUserInput = input
-					}
-					
-					if isKeyboardTypes, suggestionType == .category {
-						dropDownIndex = -1
-						categoryUserInput = input
-					}
-					
-					if isKeyboardTypes, suggestionType == .categoryOnRecentInput {
-						if let title = newValue.components(separatedBy: "@").first {
-							titleUserInput = title
-						}
-						
-						if let category = newValue.components(separatedBy: "@").last {
-							categoryUserInput = category
-						}
-					}
-					
-					if newValue.isEmpty {
-						isKeyboardTypes = false
-						filteredSuggestions = originalSuggestion
-					} else if newValue.isEmpty, suggestionType == .category {
-						filterCategory(text: categoryUserInput)
-					}
-					
-					if suggestionType == .category || suggestionType == .categoryOnRecentInput {
-						categoryDidChange(categoryUserInput)
-					} else if suggestionType == .recentInput {
-						userInputDidChange(titleUserInput)
-					}
-				})
-				.onKeyPress(characters: .letters, action: { keyPress in
-					isKeyboardTypes = true
-					return .ignored
+					textOnChange(newValue)
 				})
 				.onKeyPress(.downArrow) {
-					if suggestionType == .category || suggestionType == .recentInput {
-						isKeyboardTypes = false
-					}
-					
-					if dropDownIndex < filteredSuggestions.count - 1 {
-						dropDownIndex += 1
-					} else {
-						dropDownIndex = -1
-					}
-					
-					
-					
-					if dropDownIndex == -1 {
-						if suggestionType == .categoryOnRecentInput {
-							text = titleUserInput + "@" + categoryUserInput
-						} else if suggestionType == .category {
-							text = "@" + categoryUserInput
-						} else {
-							text = titleUserInput
-						}
-					} else {
-						let suggestion = filteredSuggestions[dropDownIndex].title
-						if suggestionType == .categoryOnRecentInput {
-							text = titleUserInput + "@" + suggestion
-						} else if suggestionType == .category {
-							text = "@" + suggestion
-						} else {
-							text = suggestion
-						}
-					}
-					
+					onKeyPressDown()
 					return .handled
 				}
 				.onKeyPress(.upArrow) {
-					if suggestionType == .category || suggestionType == .recentInput {
-						isKeyboardTypes = false
-					}
-					
-					if dropDownIndex > -1 {
-						dropDownIndex -= 1
-					}
-					else {
-						dropDownIndex = filteredSuggestions.count - 1
-					}
-					
-					if dropDownIndex == -1 {
-						if suggestionType == .categoryOnRecentInput {
-							text = titleUserInput + "@" + categoryUserInput
-						} else if suggestionType == .category {
-							text = "@" + categoryUserInput
-						} else {
-							text = titleUserInput
-						}
-					} else {
-						let suggestion = filteredSuggestions[dropDownIndex].title
-						if suggestionType == .categoryOnRecentInput {
-							text = titleUserInput + "@" + suggestion
-						} else if suggestionType == .category {
-							text = "@" + suggestion
-						} else {
-							text = suggestion
-						}
-					}
+					onKeyPressUp()
 					return .handled
-				}
-				.onKeyPress(.upArrow) {
-					return .ignored
 				}
 				.onKeyPress(.return) {
-					if suggestionType == .categoryOnRecentInput {
-						let selectedCategory = filteredSuggestions[dropDownIndex]
-						categoryDidSelect?(selectedCategory.id)
-						text = titleUserInput
-						categoryUserInput = ""
-						dropDownIndex = -1
-						suggestionType = .recentInput
-					}
-						
-					else if suggestionType == .category {
-						let selectedCategory = filteredSuggestions[dropDownIndex]
-						categoryDidSelect?(selectedCategory.id)
-						text = ""
-						titleUserInput = ""
-						categoryUserInput = ""
-						dropDownIndex = -1
-					}
-					
-					else {
-						titleDidSave?(text)
-						text = ""
-						titleUserInput = ""
-						categoryUserInput = ""
-						dropDownIndex = -1
-					}
-					
+					onKeyPressReturn()
 					return .handled
 				}
 				.onKeyPress(.escape) {
 					showDropDown = false
 					return .handled
 				}
+				.onKeyPress(characters: .letters, action: { keyPress in
+					isKeyboardTypes = true
+					return .ignored
+				})
 				.onKeyPress { keyPress in
-					if keyPress.key == "\u{7f}" {
+					if keyPress.key == "\u{7f}" || keyPress.key == "@" {
 						isKeyboardTypes = true
 					}
 					return .ignored
@@ -237,7 +115,205 @@ struct DynamicSearchView: View {
 			}
 		}
 	}
+}
+
+extension DynamicSearchView {
+	func categoryDidChange(_ text: String) {
+		if isKeyboardTypes {
+			filterCategory(text: text)
+		}
+		
+		if dropDownIndex != -1, categoryUserInput.isEmpty {
+			filterCategory(text: text)
+		}
+		
+		if dropDownIndex == -1 {
+			filterCategory(text: text)
+		}
+	}
 	
+	func userInputDidChange(_ text: String) {
+		if dropDownIndex != -1, filteredSuggestions.count != 0, text != filteredSuggestions[dropDownIndex].title {
+			filterRecentInput(text: text)
+		}
+		
+		if dropDownIndex == -1 {
+			filterRecentInput(text: text)
+		}
+	}
+	
+	func itemDidSelect() {
+		if suggestionType == .recentInput {
+			if dropDownIndex >= -1 {
+				titleDidSave?(filteredSuggestions[dropDownIndex].title)
+			}
+			text = ""
+			showDropDown = false
+			focusState = .session
+			dropDownIndex = -1
+		}
+		
+		if suggestionType == .category {
+			categoryDidSelect?(filteredSuggestions[dropDownIndex].id)
+			if let title = text.components(separatedBy: "@").first, title.count > 0 {
+				text = title.last != " " ? title + " " : title
+			} else {
+				text = ""
+			}
+			suggestionType = .recentInput
+			focusState = .inputTitle
+			dropDownIndex = -1
+		}
+	}
+	
+	func filterCategory(text: String) {
+		if text.isEmpty {
+			filteredSuggestions = originalCategories.map { Suggestion(id: $0.id, title: $0.title, color: $0.color) }
+		} else {
+			let filteredCategory = originalCategories.filter { $0.title.lowercased().contains(text.lowercased())}
+			if filteredCategory.isEmpty {
+				suggestionType = .recentInput
+			}
+			filteredSuggestions = filteredCategory.map { Suggestion(id: $0.id, title: $0.title, color: $0.color) }
+		}
+	}
+	
+	func filterRecentInput(text: String) {
+		if suggestionType == .recentInput {
+			if text.isEmpty {
+				filteredSuggestions = originalSuggestion.map { Suggestion(id: $0.id, title: $0.title, color: $0.color) }
+			} else {
+				filteredSuggestions = originalSuggestion.filter { $0.title.lowercased().contains(text.lowercased()) }
+					.map { Suggestion(id: $0.id, title: $0.title, color: $0.color )}
+			}
+		}
+	}
+	
+	func textOnChange(_ text: String) {
+		suggestionType = text.contains("@") ? (text.first == "@" ? .category : .categoryOnRecentInput) : .recentInput
+		
+		if let first = text.components(separatedBy: "@").first,
+		   let last = text.components(separatedBy: "@").last {
+			if isKeyboardTypes {
+				if suggestionType == .recentInput {
+					dropDownIndex = -1
+					titleUserInput = first
+				} else if suggestionType == .category {
+					dropDownIndex = -1
+					categoryUserInput = last
+				} else if suggestionType == .categoryOnRecentInput {
+					dropDownIndex = -1
+					titleUserInput = first
+					categoryUserInput = last
+				}
+			} else if !first.isEmpty {
+				titleUserInput = first
+			}
+		}
+		
+		if text.isEmpty {
+			isKeyboardTypes = false
+			filteredSuggestions = originalSuggestion
+		} else if text.isEmpty, suggestionType == .category {
+			filterCategory(text: categoryUserInput)
+		}
+		
+		if suggestionType == .category || suggestionType == .categoryOnRecentInput {
+			categoryDidChange(categoryUserInput)
+		} else if suggestionType == .recentInput {
+			userInputDidChange(titleUserInput)
+		}
+	}
+	
+	func onKeyPressDown() {
+		isKeyboardTypes = false
+		
+		if dropDownIndex < filteredSuggestions.count - 1 {
+			dropDownIndex += 1
+		} else {
+			dropDownIndex = -1
+		}
+		
+		if dropDownIndex == -1 {
+			if suggestionType == .categoryOnRecentInput {
+				text = titleUserInput + "@" + categoryUserInput
+			} else if suggestionType == .category {
+				text = "@" + categoryUserInput
+			} else {
+				text = titleUserInput
+			}
+		} else {
+			let suggestion = filteredSuggestions[dropDownIndex].title
+			if suggestionType == .categoryOnRecentInput {
+				text = titleUserInput + "@" + suggestion
+			} else if suggestionType == .category {
+				text = "@" + suggestion
+			} else {
+				text = suggestion
+			}
+		}
+	}
+	
+	func onKeyPressUp() {
+		isKeyboardTypes = false
+		
+		if dropDownIndex > -1 {
+			dropDownIndex -= 1
+		}
+		else {
+			dropDownIndex = filteredSuggestions.count - 1
+		}
+		
+		if dropDownIndex == -1 {
+			if suggestionType == .categoryOnRecentInput {
+				text = titleUserInput + "@" + categoryUserInput
+			} else if suggestionType == .category {
+				text = "@" + categoryUserInput
+			} else {
+				text = titleUserInput
+			}
+		} else {
+			let suggestion = filteredSuggestions[dropDownIndex].title
+			if suggestionType == .categoryOnRecentInput {
+				text = titleUserInput + "@" + suggestion
+			} else if suggestionType == .category {
+				text = "@" + suggestion
+			} else {
+				text = suggestion
+			}
+		}
+	}
+	
+	func onKeyPressReturn() {
+		if suggestionType == .categoryOnRecentInput {
+			let selectedCategory = filteredSuggestions[dropDownIndex]
+			categoryDidSelect?(selectedCategory.id)
+			text = titleUserInput
+			categoryUserInput = ""
+			dropDownIndex = -1
+			suggestionType = .recentInput
+		}
+		
+		else if suggestionType == .category {
+			let selectedCategory = filteredSuggestions[dropDownIndex]
+			categoryDidSelect?(selectedCategory.id)
+			text = ""
+			titleUserInput = ""
+			categoryUserInput = ""
+			dropDownIndex = -1
+		}
+		
+		else {
+			titleDidSave?(text)
+			text = ""
+			titleUserInput = ""
+			categoryUserInput = ""
+			dropDownIndex = -1
+		}
+	}
+}
+
+extension DynamicSearchView {
 	@ViewBuilder
 	var dropDownView: some View {
 		if showDropDown {
@@ -272,74 +348,6 @@ struct DynamicSearchView: View {
 			.cornerRadius(4)
 			.offset(y: 40)
 			.shadow(color: .gray, radius: 5, x: 0, y: 2)
-		}
-	}
-	
-	func categoryDidChange(_ text: String) {
-		if dropDownIndex != -1, categoryUserInput.isEmpty {
-			filterCategory(text: categoryUserInput)
-		}
-		
-		if dropDownIndex == -1 {
-			filterCategory(text: categoryUserInput)
-		}
-	}
-	
-	func userInputDidChange(_ text: String) {
-		if dropDownIndex != -1,
-		   filteredSuggestions.count != 0,
-		   text != filteredSuggestions[dropDownIndex].title {
-			filterRecentInput(text: text)
-		}
-		
-		if dropDownIndex == -1, isKeyboardTypes {
-			filterRecentInput(text: text)
-		}
-	}
-
-	func itemDidSelect() {
-		if suggestionType == .recentInput {
-			if dropDownIndex >= -1 {
-				titleDidSave?(filteredSuggestions[dropDownIndex].title)
-			}
-			text = ""
-			showDropDown = false
-			focusState = .session
-			dropDownIndex = -1
-		}
-		
-		if suggestionType == .category {
-			categoryDidSelect?(filteredSuggestions[dropDownIndex].id)
-			if let title = text.components(separatedBy: "@").first, title.count > 0 {
-				text = title.last != " " ? title + " " : title
-			} else {
-				text = ""
-			}
-			suggestionType = .recentInput
-			focusState = .inputTitle
-			dropDownIndex = -1
-		}
-	}
-	
-	func filterCategory(text: String) {
-		if text.isEmpty {
-			filteredSuggestions = originalCategories.map { Suggestion(id: $0.id, title: $0.title, color: $0.color) }
-		} else {
-			let filteredCategory = originalCategories.filter { $0.title.lowercased().contains(text.lowercased())}
-			filteredSuggestions = filteredCategory.map { Suggestion(id: $0.id, title: $0.title, color: $0.color) }
-		}
-	}
-	
-	func filterRecentInput(text: String) {
-		if suggestionType == .recentInput {
-			guard !text.isEmpty else {
-				filteredSuggestions = originalSuggestion.map {
-					Suggestion(id: $0.id, title: $0.title, color: $0.color)
-				}
-				return
-			}
-			
-			filteredSuggestions = originalSuggestion.filter { $0.title.lowercased().contains(text.lowercased()) }.map { Suggestion(id: $0.id, title: $0.title, color: $0.color )}
 		}
 	}
 }

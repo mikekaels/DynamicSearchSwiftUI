@@ -95,7 +95,7 @@ struct HomeView: View {
 	
 	func saveSession(title: String) {
 		
-		guard !title.isEmpty, selectedCategory.id != -1 else {
+		guard !title.isEmpty, selectedCategory.id != -1, title.first != "@" else {
 			focusState = .session
 			return
 		}
