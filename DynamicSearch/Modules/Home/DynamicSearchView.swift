@@ -15,6 +15,7 @@ struct Suggestion: Identifiable {
 
 enum SuggestionType {
 	case category
+	case categoryOnRecentInput
 	case recentInput
 }
 
@@ -76,7 +77,7 @@ struct DynamicSearchView: View {
 				}
 				.onChange(of: text, { oldValue, newValue in
 					let isContainAt = text.contains("@")
-					suggestionType = isContainAt ? .category : .recentInput
+					suggestionType = isContainAt ? (text.first == "@" ? .category : .categoryOnRecentInput) : .recentInput
 					
 					let input = newValue.filter { $0 != "@" }
 					
@@ -90,17 +91,27 @@ struct DynamicSearchView: View {
 						categoryUserInput = input
 					}
 					
+					if isKeyboardTypes, suggestionType == .categoryOnRecentInput {
+						if let title = newValue.components(separatedBy: "@").first {
+							titleUserInput = title
+						}
+						
+						if let category = newValue.components(separatedBy: "@").last {
+							categoryUserInput = category
+						}
+					}
+					
 					if newValue.isEmpty {
 						isKeyboardTypes = false
 						filteredSuggestions = originalSuggestion
 					} else if newValue.isEmpty, suggestionType == .category {
-						filterCategory(text: newValue)
+						filterCategory(text: categoryUserInput)
 					}
 					
-					if suggestionType == .category {
-						categoryDidChange(input)
+					if suggestionType == .category || suggestionType == .categoryOnRecentInput {
+						categoryDidChange(categoryUserInput)
 					} else if suggestionType == .recentInput {
-						userInputDidChange(text)
+						userInputDidChange(titleUserInput)
 					}
 				})
 				.onKeyPress(characters: .letters, action: { keyPress in
@@ -108,28 +119,44 @@ struct DynamicSearchView: View {
 					return .ignored
 				})
 				.onKeyPress(.downArrow) {
-					isKeyboardTypes = false
+					if suggestionType == .category || suggestionType == .recentInput {
+						isKeyboardTypes = false
+					}
+					
 					if dropDownIndex < filteredSuggestions.count - 1 {
 						dropDownIndex += 1
 					} else {
 						dropDownIndex = -1
 					}
 					
+					
+					
 					if dropDownIndex == -1 {
-						if suggestionType == .category {
+						if suggestionType == .categoryOnRecentInput {
+							text = titleUserInput + "@" + categoryUserInput
+						} else if suggestionType == .category {
 							text = "@" + categoryUserInput
 						} else {
 							text = titleUserInput
 						}
 					} else {
 						let suggestion = filteredSuggestions[dropDownIndex].title
-						text = suggestionType == .category ? "@\(suggestion)" : suggestion
+						if suggestionType == .categoryOnRecentInput {
+							text = titleUserInput + "@" + suggestion
+						} else if suggestionType == .category {
+							text = "@" + suggestion
+						} else {
+							text = suggestion
+						}
 					}
 					
 					return .handled
 				}
 				.onKeyPress(.upArrow) {
-					isKeyboardTypes = false
+					if suggestionType == .category || suggestionType == .recentInput {
+						isKeyboardTypes = false
+					}
+					
 					if dropDownIndex > -1 {
 						dropDownIndex -= 1
 					}
@@ -138,14 +165,22 @@ struct DynamicSearchView: View {
 					}
 					
 					if dropDownIndex == -1 {
-						if suggestionType == .category {
+						if suggestionType == .categoryOnRecentInput {
+							text = titleUserInput + "@" + categoryUserInput
+						} else if suggestionType == .category {
 							text = "@" + categoryUserInput
 						} else {
 							text = titleUserInput
 						}
 					} else {
 						let suggestion = filteredSuggestions[dropDownIndex].title
-						text = suggestionType == .category ? "@\(suggestion)" : suggestion
+						if suggestionType == .categoryOnRecentInput {
+							text = titleUserInput + "@" + suggestion
+						} else if suggestionType == .category {
+							text = "@" + suggestion
+						} else {
+							text = suggestion
+						}
 					}
 					return .handled
 				}
@@ -153,16 +188,43 @@ struct DynamicSearchView: View {
 					return .ignored
 				}
 				.onKeyPress(.return) {
-					titleDidSave?(text)
-					text = ""
-					titleUserInput = ""
-					categoryUserInput = ""
-					showDropDown = false
+					if suggestionType == .categoryOnRecentInput {
+						let selectedCategory = filteredSuggestions[dropDownIndex]
+						categoryDidSelect?(selectedCategory.id)
+						text = titleUserInput
+						categoryUserInput = ""
+						dropDownIndex = -1
+						suggestionType = .recentInput
+					}
+						
+					else if suggestionType == .category {
+						let selectedCategory = filteredSuggestions[dropDownIndex]
+						categoryDidSelect?(selectedCategory.id)
+						text = ""
+						titleUserInput = ""
+						categoryUserInput = ""
+						dropDownIndex = -1
+					}
+					
+					else {
+						titleDidSave?(text)
+						text = ""
+						titleUserInput = ""
+						categoryUserInput = ""
+						dropDownIndex = -1
+					}
+					
 					return .handled
 				}
 				.onKeyPress(.escape) {
 					showDropDown = false
 					return .handled
+				}
+				.onKeyPress { keyPress in
+					if keyPress.key == "\u{7f}" {
+						isKeyboardTypes = true
+					}
+					return .ignored
 				}
 			}
 			
@@ -227,7 +289,6 @@ struct DynamicSearchView: View {
 		if dropDownIndex != -1,
 		   filteredSuggestions.count != 0,
 		   text != filteredSuggestions[dropDownIndex].title {
-			dropDownIndex = 0
 			filterRecentInput(text: text)
 		}
 		
@@ -238,7 +299,6 @@ struct DynamicSearchView: View {
 
 	func itemDidSelect() {
 		if suggestionType == .recentInput {
-			print("~ INDEX: ",dropDownIndex)
 			if dropDownIndex >= -1 {
 				titleDidSave?(filteredSuggestions[dropDownIndex].title)
 			}
