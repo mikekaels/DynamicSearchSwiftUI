@@ -38,7 +38,11 @@ struct DynamicSearchView: View {
 	var originalSuggestion: [Suggestion] = []
 	var originalCategories: [Category]
 	
-	init(text: Binding<String>, suggestions: [Suggestion], categories: [Category], titleDidSave: ((_ title: String) -> Void)? = nil, categoryDidSelect: ((Int) -> Void)? = nil) {
+	init(text: Binding<String>, 
+		 suggestions: [Suggestion],
+		 categories: [Category],
+		 titleDidSave: ((_ title: String) -> Void)? = nil,
+		 categoryDidSelect: ((Int) -> Void)? = nil) {
 		self._text = text
 		self.originalSuggestion = suggestions
 		self.originalCategories = categories

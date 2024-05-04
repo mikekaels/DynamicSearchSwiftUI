@@ -130,7 +130,7 @@ extension CategorySelectorView {
 	}
 }
 
-//#Preview {
-//	CategorySelectorView(selectedCategory: .init(id: 0, title: "Category", color: .green))
-//}
+#Preview {
+	CategorySelectorView(selectedCategory: .init(id: 0, title: "Category", color: .green))
+}
 

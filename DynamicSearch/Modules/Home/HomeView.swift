@@ -17,7 +17,6 @@ struct Session: Identifiable {
 enum FocusType: Equatable {
 	case category
 	case inputTitle
-//	case suggestion
 	case session
 }
 
@@ -94,16 +93,17 @@ struct HomeView: View {
 	}
 	
 	func saveSession(title: String) {
-		
 		guard !title.isEmpty, selectedCategory.id != -1, title.first != "@" else {
 			focusState = .session
 			return
 		}
 		
 		let session = Session(id: Int.random(in: 100...100000), title: title, categoryId: selectedCategory.id, isDone: false)
+		
 		sessions.insert(session, at: 0)
 		sessionIndex = 0
 		focusState = .session
+		
 		if let suggestionIndex = suggestions.firstIndex(where: { $0.title.lowercased().contains(title.lowercased()) }) {
 			let suggestin = suggestions[suggestionIndex]
 			suggestions.remove(at: suggestionIndex)
