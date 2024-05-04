@@ -169,6 +169,12 @@ extension HomeView {
 			sessions[sessionIndex].isDone.toggle()
 			return .handled
 		}
+		.onKeyPress { keyPress in
+			if keyPress.key == "\u{7f}"{
+				sessions.remove(at: sessionIndex)
+			}
+			return .ignored
+		}
 	}
 }
 

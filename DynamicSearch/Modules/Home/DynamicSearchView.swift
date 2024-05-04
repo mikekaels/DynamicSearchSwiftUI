@@ -286,30 +286,21 @@ extension DynamicSearchView {
 	
 	func onKeyPressReturn() {
 		if suggestionType == .categoryOnRecentInput {
-			let selectedCategory = filteredSuggestions[dropDownIndex]
-			categoryDidSelect?(selectedCategory.id)
+			categoryDidSelect?(filteredSuggestions[dropDownIndex].id)
 			text = titleUserInput
-			categoryUserInput = ""
-			dropDownIndex = -1
 			suggestionType = .recentInput
-		}
-		
-		else if suggestionType == .category {
-			let selectedCategory = filteredSuggestions[dropDownIndex]
-			categoryDidSelect?(selectedCategory.id)
+		} else if suggestionType == .category, dropDownIndex != -1, dropDownIndex < filteredSuggestions.count {
+			categoryDidSelect?(filteredSuggestions[dropDownIndex].id)
 			text = ""
 			titleUserInput = ""
-			categoryUserInput = ""
-			dropDownIndex = -1
-		}
-		
-		else {
+		} else {
 			titleDidSave?(text)
 			text = ""
 			titleUserInput = ""
-			categoryUserInput = ""
-			dropDownIndex = -1
 		}
+		
+		dropDownIndex = -1
+		categoryUserInput = ""
 	}
 }
 
